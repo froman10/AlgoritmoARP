@@ -24,13 +24,14 @@ public class AlgoritmoVRP {
     
     
     
-    public AlgoritmoVRP(double demandaMaxima){
+    public AlgoritmoVRP(double demandaMaxima, String nombreArchivo){
         this.demandaMaxima = demandaMaxima;
         this.nodos = new ArrayList<>();
         this.ahorros  = new ArrayList<>();
         this.rutas = new ArrayList<>();
         this.candidatos = new ArrayList<>();
-        this.cargarDatos();
+        
+        this.cargarDatos(nombreArchivo);
         this.calcularAhorros();
         this.seleccionarRutas();
         this.enlazarRutas();
@@ -39,13 +40,13 @@ public class AlgoritmoVRP {
         
     }
     
-    public void cargarDatos(){
+    public void cargarDatos(String nombreArchivo){
         try{
             int i;
             int j = 0;
             String cadena = "";
             String[] parts;
-            FileReader f = new FileReader("Subbasurero.txt");
+            FileReader f = new FileReader(nombreArchivo);
             BufferedReader b = new BufferedReader(f);
             
             cadena = b.readLine();
@@ -55,20 +56,26 @@ public class AlgoritmoVRP {
             
             for(i = 1; i < parts.length-1; i++){
                 nodos.add(new Nodo(i-1, parts[i]));
-                System.out.println("");
+                //System.out.println("");
             }
             i = 0;
+            /*System.out.println("");
+            System.out.println("NODOS");
+            System.out.println("");*/
              while((cadena = b.readLine())!=null) {
                 parts = cadena.split("\t");
                  for(j = 1; j < parts.length-1; j++){
                     adyacencias[i][j-1] = Double.parseDouble(parts[j]);
                 }
                 nodos.get(i).setDemanda(Double.parseDouble(parts[j]));
-                nodos.get(i).printNodo();
+                //nodos.get(i).printNodo();
                 i++;
             }
              b.close();
-             this.printAdyacencias();
+             /*System.out.println("");
+             System.out.println("ADYACENCIAS");
+             System.out.println("");
+             this.printAdyacencias();*/
         }
         catch(Exception e){
             
@@ -87,13 +94,17 @@ public class AlgoritmoVRP {
             }
             j = 1;
         }
+        System.out.println("");
+        System.out.println("AHORROS "+this.nodos.get(0).getName());
+        System.out.println("");
         this.printAhorros();
     }
     public void insertarAhorro(int idNodo1, int idNodo2, double ahorro){
         Boolean noInsertado = true;
+        String nombreBasura = this.nodos.get(0).getName();
         Nodo nodo1 = this.nodos.get(idNodo1);
         Nodo nodo2 = this.nodos.get(idNodo2);
-        Ahorro objetoAhorro = new Ahorro(nodo1, nodo2, ahorro);
+        Ahorro objetoAhorro = new Ahorro(nodo1, nodo2, ahorro, nombreBasura);
         //objetoAhorro.printAhorro();
         int size = new Integer(this.ahorros.size());
         for(int i = 0; i < size; i++){
@@ -124,8 +135,24 @@ public class AlgoritmoVRP {
                 
             }
         }
+        /*System.out.println("");
         System.out.println("RUTAS SELECCIONADAS");
-        this.printRutas();
+        System.out.println("");
+        this.printRutas();*/
+    }
+    public void insertarRutaPorAhorro(int index){
+        Boolean noInsertado = true;
+        int size = new Integer(this.rutas.size());
+        for(int i = 0; i < size; i++){
+            if(this.ahorros.get(i).getAhorro() <=  this.ahorros.get(index).getAhorro()){
+                this.rutas.add(i, index);
+                noInsertado = false;
+                break;
+            }
+        }
+        if(noInsertado){
+            this.rutas.add(index);
+        }
     }
     public void enlazarRutas() {
         Ahorro ahorroI, ahorroJ;
@@ -142,8 +169,8 @@ public class AlgoritmoVRP {
                 ahorroJ = this.ahorros.get(indexJ);
                 
                 if( ahorroI.getDemandaTotal()+ahorroJ.getDemandaTotal() <= this.demandaMaxima){
-                    ahorroI.addNodoAdicional(ahorroJ.getNodo1());
-                    ahorroI.addNodoAdicional(ahorroJ.getNodo2());
+                    ahorroI.addNodo(ahorroJ.getNodo1());
+                    ahorroI.addNodo(ahorroJ.getNodo2());
                     ahorroI.setDemandaTotal(ahorroI.getDemandaTotal()+ahorroJ.getDemandaTotal());
                     this.rutas.remove(j);
       
@@ -154,15 +181,27 @@ public class AlgoritmoVRP {
             }
             i++;
         }
+        /*System.out.println("");
         System.out.println("RUTAS Enlazadas");
+        System.out.println("");
         this.printRutas();
+        
+        System.out.println("");
+        System.out.println("CANDIDATOS a RUTA");
+        System.out.println("");
+        //this.printCandidatos();*/
     }
     public void enlazarCandidatos() {
         Ahorro rutaCandidata;
         Nodo nodoCandidato;
         Nodo nodoNoCandidato;
         Ahorro rutaEnlazada;
-        for(Integer candidato : this.candidatos){
+        boolean candidatoAgregado;
+        //int size = new Integer(this.candidatos.size());
+        int i = 0;
+        while(i < this.candidatos.size()){
+            candidatoAgregado = false;
+            int candidato = this.candidatos.get(i);
             rutaCandidata = this.ahorros.get(candidato);
             if(!rutaCandidata.getNodo1().isSeleccionado()){
                 nodoCandidato = rutaCandidata.getNodo1();
@@ -173,31 +212,51 @@ public class AlgoritmoVRP {
                 nodoNoCandidato = rutaCandidata.getNodo1();
             }
             else{
+                this.candidatos.remove(i);
                 continue;
             }
+            //rutaCandidata.printRuta();
             for(Integer idRuta : this.rutas){
                 rutaEnlazada = this.ahorros.get(idRuta);
-                if(rutaEnlazada.insertarNodoPrimeroOUltimo(nodoNoCandidato)){
+                if(rutaEnlazada.getDemandaTotal()+nodoCandidato.getDemanda() <= this.demandaMaxima){
+                    if(rutaEnlazada.insertarNodoPrimeroOUltimo(nodoNoCandidato, nodoCandidato)){
+                        nodoCandidato.setSeleccionado(true);
+                        candidatoAgregado = true;
+                        this.candidatos.remove(i);
+                        break;
+                    }
                     
                 }
             }
-            
-        }
-    }
-    public void insertarRutaPorAhorro(int index){
-        Boolean noInsertado = true;
-        int size = new Integer(this.rutas.size());
-        for(int i = 0; i < size; i++){
-            if(this.ahorros.get(i).getAhorro() <=  this.ahorros.get(index).getAhorro()){
-                this.rutas.add(i, index);
-                noInsertado = false;
-                break;
+            if(!candidatoAgregado){
+                i++;
             }
         }
-        if(noInsertado){
-            this.rutas.add(index);
+       /* System.out.println("");
+        System.out.println("RUTAS Candidatas Enlazadas");
+        System.out.println("");
+        this.printRutas();
+        
+
+        System.out.println("");
+        System.out.println("RUTAS SOLITARIAS");
+        System.out.println("");
+        
+        this.printCandidatos();*/
+        
+        for(Integer candidato : this.candidatos){
+            rutaCandidata = this.ahorros.get(candidato);
+            if(rutaCandidata.defenirRutaSolitaria()){
+                this.rutas.add(candidato);
+            }
+            
         }
+        System.out.println("");
+        System.out.println("RUTAS FINALES "+this.nodos.get(0).getName());
+        System.out.println("");
+        this.printRutas();
     }
+  
     public void printAdyacencias(){
         for(int i = 0; i < adyacencias.length; i++){
             for(int j = 0; j <adyacencias.length; j++){
@@ -213,7 +272,12 @@ public class AlgoritmoVRP {
     }
     public void printRutas(){
         for(int i : this.rutas){
-            this.ahorros.get(i).printAhorro();
+            this.ahorros.get(i).printRuta();
+        }
+    }
+    public void printCandidatos(){
+         for(int i : this.candidatos){
+            this.ahorros.get(i).printRuta();
         }
     }
 

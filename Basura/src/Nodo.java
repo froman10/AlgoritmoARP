@@ -19,7 +19,7 @@ public class Nodo {
         this.seleccionado = false;
         this.id = id;
         this.name = name;
-        this.printNodo();
+        //this.printNodo();
     }
 
     public boolean isSeleccionado() {
